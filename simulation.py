@@ -8,23 +8,28 @@ class Team:
         self.bye_week = bye_week
         self.score = score
         self.diff_score = diff_score
-        self.team_data = team_data.values.tolist()  # Convert NumPy array to nested list
+        self.team_data = team_data
 
     def __hash__(self):
         # Convert relevant attributes to a tuple and hash it
-        return hash((self.draft_number, self.bye_week, self.score, self.diff_score, tuple(map(tuple, self.team_data))))
-
+        return hash((self.draft_number, self.bye_week, self.score, self.diff_score, tuple(self.team_data['Player'].values.tolist())))
+    
     def __str__(self):
         # Format the object as a string
-        team_data_str = "\n".join(["\t".join(map(str, sublist)) for sublist in self.team_data])
+        team_data_str = self.team_data[['Player', 'POS', 'PickDiff', 'MyPick']].to_html()
         return f"Draft Number: {self.draft_number}\nBye Week: {self.bye_week}\nScore: {self.score}\nDiff Score: {self.diff_score}\nTeam:\n{team_data_str}"
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.draft_number, self.bye_week, self.score, tuple(self.team_data['Player'].values.tolist())) == (other.draft_number, other.bye_week, other.score, tuple(other.team_data['Player'].values.tolist()))
+        else:
+            return False
 
 def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
-    adp_values = current_df['Rank'].values + np.random.normal(0, adp_std, len(current_df))
-    current_df.loc[:, 'PerturbedRank'] = adp_values
-    pick = current_df[current_df['PerturbedRank'] >= next_pick].iloc[:1]
-    current_df = current_df[current_df['PerturbedRank'] >= next_pick].iloc[1:]
+    adp_values = current_df['AVG'].values + np.random.normal(0, adp_std, len(current_df))
+    current_df.loc[:, 'PerturbedADP'] = adp_values
+    pick = current_df[current_df['PerturbedADP'] >= next_pick].iloc[:1]
+    current_df = current_df[current_df['PerturbedADP'] >= next_pick].iloc[1:]
     pick['PickDiff'] = pick['AVG'].values - next_pick
 
     (qb, rb, wr, te) = pos_count
@@ -49,14 +54,15 @@ def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
 
     return (pick, current_df)
 
-def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std):
-    teams = []
+def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std, number_of_sims):
+    teams = {}
 
     file_path = f'FantasyPros_2023_Overall_ADP_Rankings_{league_scoring}.csv'
     df = pd.read_csv(file_path)
+    df = df[['Player', 'Bye', 'AVG', 'POS']]
     original_draft_number = draft_number
 
-    for i in range(5):  # 5 simulations
+    for i in range(number_of_sims):  # 5 simulations
         for bye_week in range(1, 17):  # Bye week number
             team = pd.DataFrame()
             next_pick = draft_number
@@ -85,7 +91,7 @@ def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_st
                     te += 1
 
                 pos_count = (qb, rb, wr, te)
-                pick['OverallPick'] = next_pick
+                pick['MyPick'] = next_pick
                 team = pd.concat([team, pick])
                 score += pick['AVG'].values
                 diff_score += pick['PickDiff'].values
@@ -97,7 +103,10 @@ def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_st
             if len(score) != 0:
                 # Create a Team instance
                 team_instance = Team(original_draft_number, bye_week, score[0], diff_score[0], team)
-                teams.append(team_instance)
+                if team_instance in teams.keys():
+                    teams[team_instance] += 1
+                else:
+                    teams[team_instance] = 1
 
-    teams.sort(key=lambda v: v.score)
+    # teams.sort(key=lambda v: v.score)
     return teams

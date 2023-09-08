@@ -12,47 +12,34 @@ def create_gui(root):
         draft_number = int(draft_number_var.get())
         num_rounds = int(num_rounds_var.get())
         adp_std = float(adp_std_var.get())
+        number_of_sims = int(number_of_sims_var.get())
 
         # Simulate the draft and get a list of Team instances
-        teams = simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std)
-
-        # Create dictionaries and lists to store team details
-        team_details = {}
-        team_frequency = {}
-
-        for team in teams:
-            team_identifier = (team.bye_week, team.score)  # Use the Team instance as a key
-            team_details[team_identifier] = str(team)  # Convert Team object to a string
-            team_frequency[team_identifier] = team_frequency.get(team_identifier, 0) + 1
+        teams = simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std, number_of_sims)
 
         # Create a subplot for the plot
         fig = make_subplots(rows=1, cols=1, subplot_titles=("Fantasy Football Draft Simulations"))
-
-        max_frequency = max(team_frequency.values())
-        team_colors = []
-
-        for team in teams:
-            team_identifier = (team.bye_week, team.score)
-            frequency = team_frequency.get(team_identifier, 0)
-            intensity = (frequency / max_frequency)
-
-            # Convert the intensity to an RGBA color (e.g., "rgba(255, 0, 0, 0.7)")
-            color = f"rgba(255, 0, 0, {intensity})"
-            team_colors.append(color)
         
         # Create a scatter plot for the teams
         trace = go.Scatter(
-            x=[team.bye_week for team in teams],
-            y=[team.score for team in teams],
+            x=[team.bye_week for team in teams.keys()],
+            y=[team.score for team in teams.keys()],
             text=[
                 f"Draft Number: {team.draft_number}<br>"
                 f"Bye Week: {team.bye_week}<br>"
                 f"Score: {team.score}<br>"
                 f"Diff Score: {team.diff_score}<br>"
-                f"Team:<br>{'<br>'.join(['    '.join(map(str, sublist)) for sublist in team.team_data])}"
-            for team in teams],
+                f"Frequency: {teams[team] / number_of_sims}<br>"
+                "Team:<br>" + team.team_data[['Player', 'POS', 'AVG', 'MyPick', 'PickDiff']].to_string(max_colwidth=15, justify='right').replace("\n", "<br>")
+            for team in teams.keys()],
             mode="markers",
-            marker=dict(size=10, color=team_colors),
+            marker=dict(
+                size=25, 
+                color=[
+                    f"rgba(255, 0, 0, {teams[team] / number_of_sims})"
+                    for team in teams
+                ],
+            ),
         )
 
         # Add the trace to the subplot
@@ -132,7 +119,7 @@ def create_gui(root):
     num_rounds_label = ttk.Label(parameters_frame, text="Number of Rounds:")
     num_rounds_label.grid(row=4, column=0, sticky="w")
 
-    num_rounds_var = tk.StringVar(value="12")
+    num_rounds_var = tk.StringVar(value="7")
     num_rounds_entry = ttk.Entry(parameters_frame, textvariable=num_rounds_var)
     num_rounds_entry.grid(row=4, column=1)
 
@@ -142,17 +129,21 @@ def create_gui(root):
     adp_std_var = tk.StringVar(value="0.02")
     adp_std_entry = ttk.Entry(parameters_frame, textvariable=adp_std_var)
     adp_std_entry.grid(row=5, column=1)
+    
+    number_of_sims_label = ttk.Label(parameters_frame, text="Number of Simulations:")
+    number_of_sims_label.grid(row=6, column=0, sticky="w")
+
+    number_of_sims_var = tk.StringVar(value="1")
+    number_of_sims_entry = ttk.Entry(parameters_frame, textvariable=number_of_sims_var)
+    number_of_sims_entry.grid(row=6, column=1)
 
     # Create a button to run simulations
     simulate_button = ttk.Button(parameters_frame, text="Simulate Drafts", command=run_simulations_callback)
-    simulate_button.grid(row=6, column=0, columnspan=3)
+    simulate_button.grid(row=7, column=0, columnspan=3)
 
     # Create a frame for the plot
     plot_frame = ttk.Frame(root)
     plot_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-
-    # Call the run_simulations_callback function initially to display the plot
-    run_simulations_callback()
 
 if __name__ == "__main__":
     root = tk.Tk()
