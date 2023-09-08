@@ -10,12 +10,14 @@ def create_gui(root):
         league_size = int(league_size_var.get())
         league_scoring = scoring_var.get()
         draft_number = int(draft_number_var.get())
-        num_rounds = int(num_rounds_var.get())
+        breakpoint_rounds = [int(first_round_breakpoint_var.get()), int(second_round_breakpoint_var.get()), int(third_round_breakpoint_var.get())]
+        num_rounds = max(breakpoint_rounds)
         adp_std = float(adp_std_var.get())
         number_of_sims = int(number_of_sims_var.get())
+        
 
         # Simulate the draft and get a list of Team instances
-        teams = simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std, number_of_sims)
+        teams = simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std, number_of_sims, breakpoint_rounds)
 
         # Create a subplot for the plot
         fig = make_subplots(rows=1, cols=1, subplot_titles=("Fantasy Football Draft Simulations"))
@@ -36,7 +38,7 @@ def create_gui(root):
             marker=dict(
                 size=25, 
                 color=[
-                    f"rgba(255, 0, 0, {teams[team] / number_of_sims})"
+                    f"rgba({255 * (team.team_size == breakpoint_rounds[0])}, {255 * (team.team_size == breakpoint_rounds[1])}, {255 * (team.team_size == breakpoint_rounds[2])}, {teams[team] / number_of_sims})"
                     for team in teams
                 ],
             ),
@@ -116,17 +118,23 @@ def create_gui(root):
     draft_number_entry = ttk.Entry(parameters_frame, textvariable=draft_number_var)
     draft_number_entry.grid(row=3, column=1)
 
-    num_rounds_label = ttk.Label(parameters_frame, text="Number of Rounds:")
+    num_rounds_label = ttk.Label(parameters_frame, text="Which rounds to plot?:")
     num_rounds_label.grid(row=4, column=0, sticky="w")
 
-    num_rounds_var = tk.StringVar(value="7")
-    num_rounds_entry = ttk.Entry(parameters_frame, textvariable=num_rounds_var)
-    num_rounds_entry.grid(row=4, column=1)
+    first_round_breakpoint_var = tk.StringVar(value="3")
+    first_round_breakpoint_entry = ttk.Entry(parameters_frame, textvariable=first_round_breakpoint_var)
+    first_round_breakpoint_entry.grid(row=4, column=1)
+    second_round_breakpoint_var = tk.StringVar(value="5")
+    second_round_breakpoint_entry = ttk.Entry(parameters_frame, textvariable=second_round_breakpoint_var)
+    second_round_breakpoint_entry.grid(row=4, column=2)
+    third_round_breakpoint_var = tk.StringVar(value="7")
+    third_round_breakpoint_entry = ttk.Entry(parameters_frame, textvariable=third_round_breakpoint_var)
+    third_round_breakpoint_entry.grid(row=4, column=3)
 
     adp_std_label = ttk.Label(parameters_frame, text="ADP_STD:")
     adp_std_label.grid(row=5, column=0, sticky="w")
 
-    adp_std_var = tk.StringVar(value="0.02")
+    adp_std_var = tk.StringVar(value="0.2")
     adp_std_entry = ttk.Entry(parameters_frame, textvariable=adp_std_var)
     adp_std_entry.grid(row=5, column=1)
     

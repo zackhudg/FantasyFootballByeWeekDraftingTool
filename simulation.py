@@ -3,12 +3,13 @@ import random
 import numpy as np
 
 class Team:
-    def __init__(self, draft_number, bye_week, score, diff_score, team_data):
+    def __init__(self, draft_number, bye_week, score, diff_score, team_data, team_size):
         self.draft_number = draft_number
         self.bye_week = bye_week
         self.score = score
         self.diff_score = diff_score
         self.team_data = team_data
+        self.team_size = team_size
 
     def __hash__(self):
         # Convert relevant attributes to a tuple and hash it
@@ -39,7 +40,7 @@ def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
         if ((qb > 0 and pos_str == 'Q') or 
             (rb > 4 and pos_str == 'R') or 
             (wr > 4 and pos_str == 'W') or 
-            (te > 1 and pos_str == 'T') or 
+            (te > 0 and pos_str == 'T') or 
             (pos_str == "K") or 
             (pos_str == "D")):
             (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number, adp_std)
@@ -54,7 +55,7 @@ def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
 
     return (pick, current_df)
 
-def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std, number_of_sims):
+def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_std, number_of_sims, breakpoint_rounds):
     teams = {}
 
     file_path = f'FantasyPros_2023_Overall_ADP_Rankings_{league_scoring}.csv'
@@ -100,13 +101,14 @@ def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_st
                 next_pick += (2 * next_draft_number) - 1
                 draft_number = next_draft_number
 
-            if len(score) != 0:
-                # Create a Team instance
-                team_instance = Team(original_draft_number, bye_week, score[0], diff_score[0], team)
-                if team_instance in teams.keys():
-                    teams[team_instance] += 1
-                else:
-                    teams[team_instance] = 1
+                if round_number in breakpoint_rounds:
+                    if len(score) != 0:
+                        # Create a Team instance
+                        team_instance = Team(original_draft_number, bye_week, score[0], diff_score[0], team, round_number)
+                        if team_instance in teams.keys():
+                            teams[team_instance] += 1
+                        else:
+                            teams[team_instance] = 1
 
     # teams.sort(key=lambda v: v.score)
     return teams
