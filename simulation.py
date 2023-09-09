@@ -26,9 +26,7 @@ class Team:
         else:
             return False
 
-def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
-    adp_values = current_df['AVG'].values + np.random.normal(0, adp_std, len(current_df))
-    current_df.loc[:, 'PerturbedADP'] = adp_values
+def make_selection(current_df, next_pick, pos_count, round_number):
     pick = current_df[current_df['PerturbedADP'] >= next_pick].iloc[:1]
     current_df = current_df[current_df['PerturbedADP'] >= next_pick].iloc[1:]
     pick['PickDiff'] = pick['AVG'].values - next_pick
@@ -43,7 +41,7 @@ def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
             (te > 0 and pos_str == 'T') or 
             (pos_str == "K") or 
             (pos_str == "D")):
-            (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number, adp_std)
+            (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number)
     else:
         if ((qb > 1 and pos_str == 'Q') or 
             (rb > 8 and pos_str == 'R') or 
@@ -51,7 +49,7 @@ def make_selection(current_df, next_pick, pos_count, round_number, adp_std):
             (te > 2 and pos_str == 'T') or 
             (pos_str == "K") or 
             (pos_str == "D")):
-            (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number, adp_std)
+            (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number)
 
     return (pick, current_df)
 
@@ -65,10 +63,14 @@ def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_st
 
     for i in range(number_of_sims):  # 5 simulations
         for bye_week in range(1, 17):  # Bye week number
+            draft_number = original_draft_number
             team = pd.DataFrame()
             next_pick = draft_number
 
             current_df = df.loc[df['Bye'] == bye_week]
+            adp_values = current_df['AVG'].values + np.random.normal(0, adp_std, len(current_df))
+            current_df.loc[:, 'PerturbedADP'] = adp_values
+
             if current_df.empty:
                 continue
 
@@ -77,7 +79,7 @@ def simulate_draft(league_size, league_scoring, draft_number, num_rounds, adp_st
             pos_count = (0, 0, 0, 0)  # qb, rb, wr, te
 
             for round_number in range(1, num_rounds + 1):
-                (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number, adp_std)
+                (pick, current_df) = make_selection(current_df, next_pick, pos_count, round_number)
 
                 (qb, rb, wr, te) = pos_count
                 pos_str = pick['POS'].values[0][0:1]
